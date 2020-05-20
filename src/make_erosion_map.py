@@ -42,8 +42,9 @@ def make_erosion_map(xi, yi, points, kind='inter'):
                 Eratio1 = gau1.max()/gau1.min()
                 return (Eratio-Eratio1)**2
 
+            guess = (xi.max()-xi.min())/100
             #sd1 = fsolve(eq_zero,100,(Eratio,xi,yi,m))
-            sd1 = minimize(eq_zero,np.array(50),(Eratio,xi,yi,m), bounds=[(0,xi.max()-xi.min())], tol=1e-2).x
+            sd1 = minimize(eq_zero,np.array(guess),(Eratio,xi,yi,m), bounds=[(guess,xi.max()-xi.min())], tol=1e-2).x
             gau = gau2d(xi, yi, m, sd1)
             return gau/gau.min()
 
