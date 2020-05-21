@@ -1,7 +1,6 @@
-.DS_Store
-.DS_Store?
-._*
-.Trashes
+*.DS_Store
+*._*
+*.Trashes
 .ipynb_checkpoints
-.profraw
+*.profraw
 __pycache__
