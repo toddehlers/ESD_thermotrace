@@ -17,11 +17,14 @@ Perhaps you already have a Python 3 installation with jupyter,
 but ESD_thermotrace might use some libraries you still have not installed.
 To ensure a painless installation, this is the way to go:
 
-Make sure you have an Anaconda installation with python 3.
-If not, visit https://docs.anaconda.com/anaconda/install/ and follow the instructions
-Clone or download this repository to your preferred directory
+Make sure you have an Anaconda installation with Python 3. If not, [follow these instructions](https://docs.anaconda.com/anaconda/install/)
+
+Then Clone or download this repository to your preferred directory.
+
 Open a terminal (MacOS, Linux) or Anaconda-Prompt window (Windows).
+
 Navigate to the *ESD_thermotrace* directory.
+
 Create a new environment from the provided .yml file by entering the following command:
 ```
 conda env create -f ESD_thermotrace_environment.yml
@@ -39,9 +42,12 @@ Launch jupyter
 jupyter notebook
 ```
 Open the notebook *ESD_thermotrace.ipynb* in the browser window, you're good to go!
+
 Press **SHIFT+ENTER** to run the current cell
+
 To close the program, enter CTRL+C in the terminal, or press the Quit button in the User Interface.
-Please refer to the [jupyter documentation](https://jupyter-notebook.readthedocs.io/en/stable/) for all other questions on how to use notebooks
+
+Please refer to the [jupyter documentation](https://jupyter-notebook.readthedocs.io/en/stable/) for all other questions on how to use notebooks.
 
 To return to the base Anaconda environment, enter the activation command without specifying the env. name:
 ```
