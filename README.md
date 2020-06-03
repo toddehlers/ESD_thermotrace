@@ -23,7 +23,7 @@ Then Clone or download this repository to your preferred directory.
 
 Open a terminal (MacOS, Linux) or Anaconda-Prompt window (Windows).
 
-Navigate to the *ESD_thermotrace* directory.
+Go to the downloaded *ESD_thermotrace* directory.
 
 Create a new environment from the provided .yml file by entering the following command:
 ```
