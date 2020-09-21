@@ -348,7 +348,7 @@ def smooth(y, window_size=3, order=1, deriv=0, rate=1):
     y_new[0] = y[0]
     return y_new
 
-def plot_distributions(pops_dict, dists_dict, ref_scen, detr_labels, saveas, noise_size=50):
+def plot_distributions(pops_dict, dists_dict, ref_scen, detr_labels, saveas, noise_size=50, show_DKW=False, confidence=0.95):
     '''
     plotting function to display all distributions
     pops_dict: dictionary of all simulated populations
@@ -380,24 +380,32 @@ def plot_distributions(pops_dict, dists_dict, ref_scen, detr_labels, saveas, noi
     ax2 = fig.add_subplot(gspec[1])
     color=iter(cm.rainbow(np.linspace(0,1,len(dists_dict))))
     c_ref = next(color)
-    # plot all scenarios cdf, including 100 random subsamples of reference scenario
-    for i in np.arange(100):
-        pop1 = np.random.choice(pops_dict[ref_scen],noise_size)
-        if i==0:
-            dist1 = make_dists(pop1)
-            sns.lineplot(x=dist1.vals, y=dist1.cdf_y,
-                         color=c_ref, alpha=0.1, lw=1, ax=ax2, label=ref_scen+', n='+str(noise_size))
-        else:
-            dist1 = make_dists(pop1)
-            sns.lineplot(x=dist1.vals, y=dist1.cdf_y,
-                         color=c_ref, alpha=0.1, lw=1, ax=ax2, label='_nolegend_')
-
+    # plot all scenarios cdf
+    #for i in np.arange(100): # include 100 random subsamples of reference scenario
+    #    pop1 = np.random.choice(pops_dict[ref_scen],noise_size)
+    #    if i==0:
+    #        dist1 = make_dists(pop1)
+    #        sns.lineplot(x=dist1.vals, y=dist1.cdf_y,
+    #                     color=c_ref, alpha=0.1, lw=1, ax=ax2, label=ref_scen+', n='+str(noise_size))
+    #    else:
+    #        dist1 = make_dists(pop1)
+    #        sns.lineplot(x=dist1.vals, y=dist1.cdf_y,
+    #                     color=c_ref, alpha=0.1, lw=1, ax=ax2, label='_nolegend_')
     color=iter(cm.rainbow(np.linspace(0,1,len(dists_dict))))
     for scen,df in dists_dict.items():
         if sum([i==scen for i in detr_labels])>0:
             ls = '--'
         else:
             ls = '-'
+        if scen == ref_scen and show_DKW==True:
+            DKW = np.sqrt(np.log(2/(1-confidence))/(2*noise_size))
+            ax2.fill_between(x=df.vals,
+            y1=df.cdf_y-DKW,
+            y2=df.cdf_y+DKW,
+            color=c_ref,
+            alpha=0.3,
+            label=str(int(confidence*100))+'% conf of '+ref_scen+', n='+str(noise_size)
+            )
         ax2.plot(df.vals, df.cdf_y, color=next(color), linestyle=ls, label=scen+', n='+str(df.valcount.sum()), lw=4)
     ax2.set(xlim=xlim, ylabel='cumulative frequency', xlabel='age [My]')
     ax2.set_title('Modeled vs Detrital: Cumulative Age Distribution',
