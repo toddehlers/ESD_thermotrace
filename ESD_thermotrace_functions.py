@@ -357,6 +357,8 @@ def plot_distributions(pops_dict, dists_dict, ref_scen, detr_labels, saveas, noi
     detr_labels: list of labels to recognize measured detrital destributions
     saveas: path to save to
     noise_size: sample size for which you want to generate noise around the reference scenario
+    show_DKW: boolean, if True the DKW confidence interval is calculated and plotted as alternative to the iterations
+    confidence: scalar, confidence interval for the DKW
     '''
     fig = plt.figure(figsize=(14,14))
     gspec = gs.GridSpec(2,1,figure=fig)
@@ -381,23 +383,25 @@ def plot_distributions(pops_dict, dists_dict, ref_scen, detr_labels, saveas, noi
     color=iter(cm.rainbow(np.linspace(0,1,len(dists_dict))))
     c_ref = next(color)
     # plot all scenarios cdf
-    #for i in np.arange(100): # include 100 random subsamples of reference scenario
-    #    pop1 = np.random.choice(pops_dict[ref_scen],noise_size)
-    #    if i==0:
-    #        dist1 = make_dists(pop1)
-    #        sns.lineplot(x=dist1.vals, y=dist1.cdf_y,
-    #                     color=c_ref, alpha=0.1, lw=1, ax=ax2, label=ref_scen+', n='+str(noise_size))
-    #    else:
-    #        dist1 = make_dists(pop1)
-    #        sns.lineplot(x=dist1.vals, y=dist1.cdf_y,
-    #                     color=c_ref, alpha=0.1, lw=1, ax=ax2, label='_nolegend_')
+    if not show_DKW:
+        for i in np.arange(100): # include 100 random subsamples of reference scenario?
+            pop1 = np.random.choice(pops_dict[ref_scen],noise_size)
+            if i==0:
+                dist1 = make_dists(pop1)
+                sns.lineplot(x=dist1.vals, y=dist1.cdf_y,
+                             color=c_ref, alpha=0.1, lw=1, ax=ax2, label=ref_scen+', n='+str(noise_size))
+            else:
+                dist1 = make_dists(pop1)
+                sns.lineplot(x=dist1.vals, y=dist1.cdf_y,
+                             color=c_ref, alpha=0.1, lw=1, ax=ax2, label='_nolegend_')
+
     color=iter(cm.rainbow(np.linspace(0,1,len(dists_dict))))
     for scen,df in dists_dict.items():
         if sum([i==scen for i in detr_labels])>0:
             ls = '--'
         else:
             ls = '-'
-        if scen == ref_scen and show_DKW==True:
+        if scen == ref_scen and show_DKW:
             DKW = np.sqrt(np.log(2/(1-confidence))/(2*noise_size))
             ax2.fill_between(x=df.vals,
             y1=df.cdf_y-DKW,
@@ -421,7 +425,7 @@ def plot_confidence(prob_dict, all_k, ref_scen, saveas, num_of_colors):
     all_k: 1D-array of k values (integers)
     ref_scen: the label of the reference scenario, based on which prob_dict has been made
     saveas: path to be saved at
-    num_of_cols: number of colors iterate through,
+    num_of_colorss: number of colors to iterate through,
                     must equal the number of colors plotted before, to be consistent
     '''
     sns.set_style('white')
@@ -452,7 +456,7 @@ def plot_confidence(prob_dict, all_k, ref_scen, saveas, num_of_colors):
 def plot_violins(data, label, saveas, k_iter, sam_size):
     '''
     plotting function for violins figure
-    data: pd.dataframe with columns 'scenario' and 'divergence_norm'
+    data: pd.dataframe with columns 'scenario' and 'divergence'
     saveas: path to save to
     k_iter: number of iterations
     sam_size: number of grains used in each iteration
@@ -461,9 +465,9 @@ def plot_violins(data, label, saveas, k_iter, sam_size):
     fig = plt.figure(figsize=(15,8))
     ax = fig.add_subplot()
     # also useful: sns.color_palette('colorblind')
-    sns.violinplot(data=data, x='scenario',y='divergence_norm', ax=ax, cut=0, scale='area', palette='rainbow')
+    sns.violinplot(data=data, x='scenario',y='divergence', ax=ax, cut=0, scale='area', palette='rainbow')
     ax.set_xlabel('erosion scenario', fontdict={'weight':'bold'})
-    ax.set_ylabel('normalized KS statistic from '+str(k_iter)+' iterations',fontdict={'weight':'bold'})
+    ax.set_ylabel('KS statistic from '+str(k_iter)+' iterations',fontdict={'weight':'bold'})
     ax.set_title('Difference between subsampled erosion scenarios and '+label+', n='+str(sam_size),
                  pad=10, fontdict={'weight':'bold'})
     # save figure
