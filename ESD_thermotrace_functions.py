@@ -303,6 +303,24 @@ def get_KS(res_p, d):
     # return KS statistic between real and interpolated from downsampled
     return max(np.abs(np.interp(x=res_p_vals,xp=d.vals,fp=d.cdf_y)-res_d))
 
+def get_Kui(res_p, d):
+    '''
+    function to calculate the statistic of Kuiper's test,
+    i.e., given a CDF and a number n of observations x_i-n, Kuiper's statistic expresses the sum of the two maxima
+    of the vectors CDF-CDF(x_i-n) and CDF(x_i-n)-CDF
+    that inform vertical distances both above and below the reference CDF
+
+    res_p = resampled population p, with n=k
+    d = real distribution of p
+    
+    returns Kuiper test's statistic (D)
+    '''
+    res_p = np.array(res_p)
+    res_p.sort()
+    Dplus = np.max((np.arange(res_p.size)+1)/res_p.size-np.interp(x=res_p,xp=d.vals,fp=d.cdf_y))
+    Dmin = np.max(np.interp(x=res_p,xp=d.vals,fp=d.cdf_y)-np.arange(res_p.size)/res_p.size)
+    return Dplus + Dmin
+
 def get_KL(res_p, d):
     '''
     res_p = resampled population p, with n=k
@@ -453,10 +471,12 @@ def plot_confidence(prob_dict, all_k, ref_scen, saveas, num_of_colors):
     ax.legend(leg, loc='lower right')
     fig.savefig(saveas, dpi=200)
 
-def plot_violins(data, label, saveas, k_iter, sam_size):
+def plot_violins(data, label, column, saveas, k_iter, sam_size):
     '''
     plotting function for violins figure
-    data: pd.dataframe with columns 'scenario' and 'divergence'
+    data: pd.dataframe with column 'scenario' (for the x axis) and another column to be plotted as y
+    label: string, the key of the wanted population for the dictionary of detrital data
+    column: string, column label of the dataframe to plot
     saveas: path to save to
     k_iter: number of iterations
     sam_size: number of grains used in each iteration
@@ -465,9 +485,10 @@ def plot_violins(data, label, saveas, k_iter, sam_size):
     fig = plt.figure(figsize=(15,8))
     ax = fig.add_subplot()
     # also useful: sns.color_palette('colorblind')
-    sns.violinplot(data=data, x='scenario',y='divergence', ax=ax, cut=0, scale='area', palette='rainbow')
+    sns.violinplot(data=data, x='scenario', y=column, split=True, hue='metric',
+    ax=ax, cut=0, scale='area', palette='rainbow')
     ax.set_xlabel('erosion scenario', fontdict={'weight':'bold'})
-    ax.set_ylabel('KS statistic from '+str(k_iter)+' iterations',fontdict={'weight':'bold'})
+    ax.set_ylabel('dissimilarity from '+str(k_iter)+' iterations',fontdict={'weight':'bold'})
     ax.set_title('Difference between subsampled erosion scenarios and '+label+', n='+str(sam_size),
                  pad=10, fontdict={'weight':'bold'})
     # save figure
