@@ -291,17 +291,14 @@ def make_spdf(pop,sd=0.05):
 
 def get_KS(res_p, d):
     '''
-    res_p = resampled population p, with n=k
-    d = real distribution of p
+    res_p = resampled population p, with n = k
+    d = a distribution with n != k
     returns KS statistic
     '''
     res_p = np.array(res_p)
     res_p.sort()
-    res_p_vals, res_p_valcount = np.unique(res_p, return_counts=True)
-
-    res_d = res_p_valcount.cumsum()/res_p_valcount.sum()
-    # return KS statistic between real and interpolated from downsampled
-    return max(np.abs(np.interp(x=res_p_vals,xp=d.vals,fp=d.cdf_y)-res_d))
+    # return KS statistic between distribution d and the distribution of res_p
+    return np.max(np.abs((np.arange(res_p.size)+1)/res_p.size-np.interp(x=res_p,xp=d.vals,fp=d.cdf_y)))
 
 def get_Kui(res_p, d):
     '''
@@ -312,7 +309,7 @@ def get_Kui(res_p, d):
 
     res_p = resampled population p, with n=k
     d = real distribution of p
-    
+
     returns Kuiper test's statistic (D)
     '''
     res_p = np.array(res_p)
@@ -324,17 +321,15 @@ def get_Kui(res_p, d):
 def get_KL(res_p, d):
     '''
     res_p = resampled population p, with n=k
-    d = real distribution of p
+    d = a cumulative distribution from n != k
     bounds = limits of the distribution, defined at the beginning
     returns characteristic KL divergence at the chosen confidence level
     '''
     from scipy.stats import entropy
     res_p = np.array(res_p)
     res_p.sort()
-    res_p_vals, res_p_valcount = np.unique(res_p, return_counts=True)
-    res_d = res_p_valcount.cumsum()/res_p_valcount.sum()
-    # return KL divergence between real and interpolated from downsampled
-    return entropy(np.interp(x=res_p_vals,xp=d.vals,fp=d.cdf_y), res_d)
+    # return KL divergence between d and distribution of res_p (downsampled)
+    return entropy(np.interp(x=res_p,xp=d.vals,fp=d.cdf_y), (np.arange(res_p.size)+1)/res_p.size)
 
 def smooth(y, window_size=3, order=1, deriv=0, rate=1):
     '''
