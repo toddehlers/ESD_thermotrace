@@ -399,11 +399,11 @@ def plot_distributions(pops_dict, dists_dict, ref_scen, detr_labels, saveas, noi
     if not show_DKW:
         for i in np.arange(100): # include 100 random subsamples of reference scenario?
             pop1 = np.random.choice(pops_dict[ref_scen],noise_size)
-            if i==0:
+            if i==0: # save legend entry only for the first iteration
                 dist1 = make_dists(pop1)
                 sns.lineplot(x=dist1.vals, y=dist1.cdf_y,
                              color=c_ref, alpha=0.1, lw=1, ax=ax2, label=ref_scen+', n='+str(noise_size))
-            else:
+            else: # plot the remaining iterations without showing them in the legend
                 dist1 = make_dists(pop1)
                 sns.lineplot(x=dist1.vals, y=dist1.cdf_y,
                              color=c_ref, alpha=0.1, lw=1, ax=ax2, label='_nolegend_')
