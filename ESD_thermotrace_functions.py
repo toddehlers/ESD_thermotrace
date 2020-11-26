@@ -1,6 +1,6 @@
 '''
 This file contains all the needed functions to run the ESD_thermotrace simulations
-Last edited by A. Madella on 10th November 2020
+Last edited by A. Madella on 26th November 2020
 '''
 
 import numpy as np                                 # library for arrays
@@ -18,6 +18,45 @@ import utm                                         # conversion from and to UTM 
 from os import mkdir, path                         # operating system utilities
 from sklearn.manifold import MDS                   # multi dimensional scaling package
 import ScientificColourMaps6 as scm6               # load colour maps by F. Crameri
+
+############################################################################################################
+
+def read_input_file(filename):
+    '''
+    function to read the input textfile
+    the single argument must have extension .txt
+    returns a list of all the lines where input params are specified
+    '''
+    fid = open(filename, 'r')
+    fid = np.array(str(fid.read()).split('\n'))
+    fid = fid[[len(i)!=0 for i in fid]]
+    fid = fid[[i[0]!='#' for i in fid]]
+    return fid
+
+############################################################################################################
+
+def get_param(line):
+    '''
+    returns the parameter from the given line,
+    it only recognizes strings and booleans,
+    integers must be converted from string with the function int()
+    '''
+    line1 = line.split(':')
+    if len(line1)>1:
+        param = line1[-1].split()
+        if len(param)>1:
+            return param
+        elif len(param)==1:
+            if param == 'True' or param == 'true':
+                return True
+            elif param == 'False' or param == 'false':
+                return False
+            else:
+                return param[0]
+        else:
+            return []
+    else:
+        return []
 
 ############################################################################################################
 
@@ -160,11 +199,11 @@ class DEM:
 
 def import_bedrock_data(path):
     bd = pd.read_excel(path)
-    bd.sort_values(by='elev',inplace=True)
-    z = bd.elev.values
+    bd.sort_values(by='elevation',inplace=True)
+    z = bd.elevation.values
     if z.mean()<10:
         z = z*1000 # convert elevations from km to meters, if that's the case
-    a, u, lat, lon = bd.age.values, bd.sd.values, bd.lat.values, bd.lon.values
+    a, u, lat, lon = bd.age.values, bd.age_u.values, bd.latitude.values, bd.longitude.values
 
     # convert from geographic to projected coordinates, not to overestimate elevation during interpolation.
     x_utm, y_utm = np.array([]), np.array([]) # preallocate arrays
@@ -173,7 +212,7 @@ def import_bedrock_data(path):
         x_utm, y_utm = np.append(x_utm, xy_utm[0]), np.append(y_utm, xy_utm[1])
 
     # add points at -5000 m below sample elevation (zero cooling age depth) to arrays
-    # such that each x,y location has a double with age=0 and elev=z-5000
+    # such that each x,y location has a double with age=0 and elevation=z-5000
     xx_utm, yy_utm, zz, aa = x_utm, y_utm, z, a # double letters indicate doubled vectors thereon
     for i,v in enumerate(z):
         xx_utm, yy_utm = np.append(xx_utm, x_utm[i]), np.append(yy_utm, y_utm[i])
@@ -221,7 +260,7 @@ def plot_input_data(dem, e_maps, e_map_filenames, ws_outline, interp_method, bd,
     # scatter plot if map of bedrock data was not imported
     if interp_method != 'imp':
         ax1.set_title('Input DEM and bedrock samples',pad=10, fontdict=dict(weight='bold'))
-        sct = ax1.scatter(bd.lon.values, bd.lat.values, c=bd.age.values, cmap=age_cmap, edgecolor='w')
+        sct = ax1.scatter(bd.longitude.values, bd.latitude.values, c=bd.age.values, cmap=age_cmap, edgecolor='w')
         cb2 = fig.colorbar(sct)
         cb2.set_label('age [My]')
     else:
@@ -363,7 +402,7 @@ def plot_resDEM_and_age_map(dem, res, age_interp_map, bd, ws_outline, interp_met
     vmax = max(np.nanmax(age_interp_map),bd.age.max())
     if interp_method != 'imp':
         for ax in [ax1,ax2]:
-            ax.scatter(x=bd.lon, y=bd.lat, c=bd.age, cmap=age_cmap, vmin=vmin, vmax=vmax, edgecolor='w')
+            ax.scatter(x=bd.longitude, y=bd.latitude, c=bd.age, cmap=age_cmap, vmin=vmin, vmax=vmax, edgecolor='w')
             ax.set(xlim=(dem.extent84[0],dem.extent84[1]), ylim=(dem.extent84[2],dem.extent84[3]))
 
     m = cm.ScalarMappable(cmap=age_cmap)
@@ -491,7 +530,7 @@ def plot_error_map(age_interp_error_map, error_interp, bd, ws_outline, interp_me
     '''
     fig,ax = plt.subplots(1,1,figsize=(20,7))
     vmax = max(np.nanmax(age_interp_error_map),np.nanmax(error_interp))
-    im = ax.imshow(age_interp_error_map, origin='upper', extent=extent, cmap=err_cmap, vmax=vmax)
+    im = ax.imshow(age_interp_error_map, origin='upper', extent=extent, cmap=err_cmap, vmin=0, vmax=vmax)
     ws_outline.plot(edgecolor='w',facecolor='None',ax=ax)
     ax.set(aspect='equal', xlabel='longitude', ylabel='latitude',
            xlim=(extent[0],extent[1]), ylim=(extent[2],extent[3]))
@@ -503,7 +542,7 @@ def plot_error_map(age_interp_error_map, error_interp, bd, ws_outline, interp_me
     else:
         cb = fig.colorbar(im)
         cb.set_label('raster: total error [%]')
-        sct = ax.scatter(x=bd.lon, y=bd.lat, c=error_interp, edgecolor='w', cmap=err_cmap, vmax=vmax)
+        sct = ax.scatter(x=bd.longitude, y=bd.latitude, c=error_interp, edgecolor='w', cmap=err_cmap, vmin=0, vmax=vmax)
         cb1 = fig.colorbar(sct)
         cb1.set_label('scatter: interpolation error [%]')
     fig.savefig(saveas, dpi=200) # save fig
@@ -587,7 +626,7 @@ def plot_clipped_age_map(dem, age_interp_map_clp, ws_outline, bd, interp_method,
     cb.set_label('age [My]')
 
     if interp_method != 'imp':
-        ax.scatter(x=bd.lon, y=bd.lat, c=bd.age, edgecolor='w', cmap=age_cmap,
+        ax.scatter(x=bd.longitude, y=bd.latitude, c=bd.age, edgecolor='w', cmap=age_cmap,
                    vmin=np.nanmin(age_interp_map_clp), vmax=np.nanmax(age_interp_map_clp))
 
     fig.savefig(saveas, dpi=200) # save fig
