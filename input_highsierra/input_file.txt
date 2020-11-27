@@ -1,23 +1,36 @@
-# DIRECTORIES AND PATHS
+############### DIRECTORIES AND PATHS ###############
 
-1. input_folder: input_highsierra
-2. output_folder: output_highsierra
-3. dem_filename: dem84_30_clp.asc
-4. erosion_map_filenames:
-5. watershed_outline_filename: inyo_ws.shp
-6. bedrock_ages_filename: bd_highsierra.xlsx
-7. detrital_ages_filenames: dd_inyo_fine.xlsx
+1 input_folder: input_highsierra
 
-# OTHER PARAMETERS AND OPTIONS
+2 output_folder: output_highsierra
 
-8. resolution: 90
-9. example_scenarios: true
-10. interpolation_method: zln
-11. extrapolation_radius:
-12. age_map_filename:
-13. age_map_uncertainty_filename:
+3 dem_filename: dem84_30_clp.asc
 
-# INSTRUCTIONS
+4 erosion_map_filenames:
+
+5 watershed_outline_filename: inyo_ws.shp
+
+6 bedrock_ages_filename: bd_highsierra.xlsx
+
+7 detrital_ages_filenames: dd_inyo_fine.xlsx
+
+
+############### OTHER PARAMETERS AND OPTIONS ###############
+
+8 resolution: 90
+
+9 example_scenarios: true
+
+10 interpolation_method: rbf
+
+11 extrapolation_radius: 2000
+
+12 age_map_filename:
+
+13 age_map_uncertainty_filename:
+
+
+############### INSTRUCTIONS ###############
 
 # 1. this is the directory on your computer where all the input files are located
 
@@ -41,10 +54,12 @@
 
 # 6. Input bedrock ages filename, as .xlsx or .csv format
 # This should be a table with the following header:
-# latitude, longitude, elevation, age, age_u
-# coordinates must be WGS1984 values
-# elevation in meters
+# latitude, longitude, elevation, age, age_u, zero_age_depth
 # age and age_u inform the age and related uncertainty in million years
+# zero_age_depth informs the depth at which the thermochronometric ages are reset.
+# this latter column can be blank, in which case the depth is assigned to be elevation-5000 m
+# coordinates must be WGS1984 values
+# elevation and zero_age_depth are in meters above sea level
 
 # 7. One or more detrital grain ages, .xlsx or .csv format, separated by a space
 # These should have at least 2 columns labeled age and age_u

@@ -6,6 +6,7 @@ Last edited by A. Madella on 26th November 2020
 import numpy as np                                 # library for arrays
 import pandas as pd                                # library for tables
 import geopandas as gpd                            # library for georeferenced tables
+import warnings                                    # python warnings module
 from collections import OrderedDict                # ordered dictionary objects
 import matplotlib.pyplot as plt                    # plotting library
 import matplotlib.gridspec as gs                   # library to make gridded subplots
@@ -25,38 +26,45 @@ def read_input_file(filename):
     '''
     function to read the input textfile
     the single argument must have extension .txt
-    returns a list of all the lines where input params are specified
+    returns a list of all the lines (splitted) where input parameters
+    are located in the last element of each line
     '''
     fid = open(filename, 'r')
     fid = np.array(str(fid.read()).split('\n'))
     fid = fid[[len(i)!=0 for i in fid]]
     fid = fid[[i[0]!='#' for i in fid]]
+    fid = [line.split(':') for line in fid]
+    fid = [line[0].split()+line[1].split() for line in fid]
+
+    # make integers where needed
+    for line in fid:
+        for i in np.arange(len(line)):
+            try:
+                line[i] = int(line[i])
+            except:
+                pass
+
+    # make lists, where lists are needed
+    for i in [3,6]:
+        if len(fid[i])<3:
+            fid[i].append([])
+        elif len(fid[i])>3:
+            fid[i] = fid[i][:2]+[fid[i][2:]]
+        elif type(fid[i][2]) != list:
+            fid[i][2] = fid[i][2:]
+
+    # make boolean where needed
+    if fid[8][-1].capitalize() == 'True':
+        fid[8][-1] = True
+    elif fid[8][-1].capitalize() == 'False':
+        fid[8][-1] = False
+
+    # make Nones where needed
+    for line in [fid[5]]+fid[10:]:
+        if len(line)<3:
+            line.append(None)
+
     return fid
-
-############################################################################################################
-
-def get_param(line):
-    '''
-    returns the parameter from the given line,
-    it only recognizes strings and booleans,
-    integers must be converted from string with the function int()
-    '''
-    line1 = line.split(':')
-    if len(line1)>1:
-        param = line1[-1].split()
-        if len(param)>1:
-            return param
-        elif len(param)==1:
-            if param == 'True' or param == 'true':
-                return True
-            elif param == 'False' or param == 'false':
-                return False
-            else:
-                return param[0]
-        else:
-            return []
-    else:
-        return []
 
 ############################################################################################################
 
@@ -101,7 +109,7 @@ class DEM:
         # then convert all strings to floats
         dem = np.array([[float(i) for i in dem_ls_of_str[j]] for j in range(dem_info['nrows'])])
         if dem.shape != (dem_info['nrows'], dem_info['ncols']):
-            print('something went wrong while parsing the DEM, nrows and/or ncols do not match the original input')
+            warnings.warn('something went wrong while parsing the DEM\nnrows and/or ncols do not match the original input')
 
         # change NODATA_value to np.nan, unless it equals 0
         if dem_info['NODATA_value'] != 0:
@@ -141,9 +149,7 @@ class DEM:
         '''
         Prints details of imported DEM, except nodata value
         '''
-        print('')
-        print('METADATA OF '+self.name)
-        print('')
+        print('\nMETADATA OF '+self.name+'\n')
         print('xllcorner = {}'.format(self.xllcorner))
         print('yllcorner = {}'.format(self.yllcorner))
         print('ncols = {}'.format(self.ncols))
@@ -201,8 +207,14 @@ def import_bedrock_data(path):
     bd = pd.read_excel(path)
     bd.sort_values(by='elevation',inplace=True)
     z = bd.elevation.values
-    if z.mean()<10:
-        z = z*1000 # convert elevations from km to meters, if that's the case
+    try:
+        z0age = bd.zero_age_depth.values
+        if not np.array(z0age==z0age).all(): # check for Nans
+            z0age = z-5000
+            warnings.warn('The column "zero_age_depth" contains Nans\n all zero age depths will be set to z-5000m')
+    except:
+        z0age = z-5000
+
     a, u, lat, lon = bd.age.values, bd.age_u.values, bd.latitude.values, bd.longitude.values
 
     # convert from geographic to projected coordinates, not to overestimate elevation during interpolation.
@@ -213,10 +225,12 @@ def import_bedrock_data(path):
 
     # add points at -5000 m below sample elevation (zero cooling age depth) to arrays
     # such that each x,y location has a double with age=0 and elevation=z-5000
+    # alternatively use the zero_age_depth column, if present.
     xx_utm, yy_utm, zz, aa = x_utm, y_utm, z, a # double letters indicate doubled vectors thereon
     for i,v in enumerate(z):
         xx_utm, yy_utm = np.append(xx_utm, x_utm[i]), np.append(yy_utm, y_utm[i])
-        zz, aa = np.append(zz, v-5000), np.append(aa, 1e-9)
+        zz, aa = np.append(zz, z0age[i]), np.append(aa, 1e-9)
+
     return bd, z, a, u, lat, lon, x_utm, y_utm, xx_utm, yy_utm, zz, aa
 
 ############################################################################################################
@@ -301,8 +315,17 @@ def plot_input_data(dem, e_maps, e_map_filenames, ws_outline, interp_method, bd,
             cb2.set_label('relative uncertainty [%]')
             fig.savefig(saveas, dpi=200) # save figure
         else:
-            print('WARNING')
-            print('you have selected the interpolation method "imp", but I cannot find an age map')
+            warnings.warn('you have selected the interpolation method "imp", but I cannot find an age map')
+
+############################################################################################################
+
+def dist3D(xyz1, xyz2):
+    '''
+    Calculates the distance between two points in 3D.
+    xyz1 - list or tuple of x,y,z coords for first point
+    xyz2 - list or tuple of x,y,z coords for second point
+    '''
+    return np.sqrt((xyz1[0]-xyz2[0])**2+(xyz1[1]-xyz2[1])**2+(xyz1[2]-xyz2[2])**2)
 
 ############################################################################################################
 
@@ -330,20 +353,11 @@ def extrapolation(gdop, gdopx, gdopy, gdopz, data, datax, datay, dataz, ext_rad)
     # select nans from the griddata output
     nans, nansx, nansy, nansz = gdop[gdop!=gdop], gdopx[gdop!=gdop], gdopy[gdop!=gdop], gdopz[gdop!=gdop]
 
-    def dist3D(xyz1, xyz2): # define distance function
-        '''
-        Calculates the distance between two points in 3D.
-        xyz1 - list or tuple of x,y,z coords for first point
-        xyz2 - list or tuple of x,y,z coords for second point
-        '''
-        return np.sqrt((xyz1[0]-xyz2[0])**2+(xyz1[1]-xyz2[1])**2+(xyz1[2]-xyz2[2])**2)
-
     # This is the workflow of the extrapolation function:
     # for each of the nans:
     # calculate inverse distance from NaN to all samples, drop samples too far away
     # multiply inverse distances by related age and store in a [1 x M] vector of weighted values
     # summate and divide by M
-
     for i in np.arange(nans.size):
         # make array of ages divided by distance and number of data points
         dists = np.array([dist3D((nansx[i],nansy[i],nansz[i]), (datax[j],datay[j],dataz[j])) for j in np.arange(data.size)])
@@ -413,9 +427,21 @@ def plot_resDEM_and_age_map(dem, res, age_interp_map, bd, ws_outline, interp_met
 
 ############################################################################################################
 
-def make_errormap(dem, res, a, u, aa, xx_utm, yy_utm, zz, x_utm, y_utm, interp_method, ext_rad):
+def make_errormap(dem, res, z, a, u, aa, xx_utm, yy_utm, zz, x_utm, y_utm, interp_method, ext_rad):
     '''
-
+    dem - instance of the class DEM, the imported digital elevation model
+    res - resolution in meters
+    z - array of elevations from bedrock data
+    a - array of ages from bedrock data
+    u - array of age uncertainties from bedrock data
+    aa - array of surface ages and zero ages
+    xx_utm - array x_utm repeated twice
+    yy_utm - array y_utm repeated twice
+    zz - array of bedrock samples elevations and zero age depths
+    x_utm - array of longitudes utm
+    y_utm - array of latitudes utm
+    interp_method - chosen interpolation method (input parameter)
+    ext_rad - chosen radius of extrapolation in meters (input parameter)
     '''
     # pre-allocate a vector with as many elements as bedrock samples
     error_interp = np.zeros(a.size)
@@ -432,7 +458,21 @@ def make_errormap(dem, res, a, u, aa, xx_utm, yy_utm, zz, x_utm, y_utm, interp_m
         else:
             pts1 = np.concatenate(([x_boot],[y_boot],[z_boot])).transpose() # data without i sample
             pos1 = np.concatenate(([xx_utm[i]], [yy_utm[i]], [zz[i]])) # coordinates of i sample
-            a_int = intr.griddata(points=pts1, values=a_boot, xi=pos1)[0]
+            a_int = intr.griddata(points=pts1, values=a_boot, xi=pos1)[0] #interpolated age of i sample
+            if a_int != a_int and interp_method == 'ext':
+                # extrapolate from remaining samples within ext_rad
+                # make array of ages divided by distance and number of data points
+                dists = np.array([dist3D((xx_utm[i],yy_utm[i],zz[i]), (x_boot[j],y_boot[j],z_boot[j])) for j in np.arange(a_boot.size)])
+                dists1 = dists[dists < ext_rad] # do not consider points farther than extra_rad
+                if dists1.size > 0:
+                    data1 = a_boot[dists < ext_rad] # select ages with same index
+                    dataz1 = z_boot[dists < ext_rad] # select elevations with same index
+                    dists1 = 1/dists1 # invert distances
+                    # make linear regression based on age-elevation from data points within extra_rad
+                    f_z = LinearRegression().fit(dataz1.reshape((-1,1)), data1, sample_weight=dists1)
+                    a_int = f_z.intercept_+f_z.coef_*zz[i]
+                else:
+                    a_int = np.nan
         error_interp[i] = abs(aa[i]-a_int)/aa[i]*100
 
     error_total = np.sqrt(error_interp**2+(u/a*100)**2) # calculate sqrt of the square error_interp + square age_sd
@@ -499,9 +539,7 @@ def plot_linreg(R2, reg0, z, a, u, error_interp, saveas):
     saveas - path to filename to save the figure
     '''
     if R2 < 0.7:
-        print('WARNING!!!')
-        print('The scatter of your age-elevation data is rather high (R^2 = '+str(R2)+')')
-        print('You might want to use a different interpolation method')
+        warnings.warn('The scatter of your age-elevation data is rather high (R^2 = '+str(R2)+')\nYou might want to use a different interpolation method')
 
     fig,ax = plt.subplots(1,1,figsize=(10,6))
     a_new = reg0.intercept_+reg0.coef_[0]*z
