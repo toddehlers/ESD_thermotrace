@@ -21,7 +21,7 @@
 
 9 example_scenarios: true
 
-10 interpolation_method: rbf
+10 interpolation_method: zln
 
 11 extrapolation_radius: 2000
 

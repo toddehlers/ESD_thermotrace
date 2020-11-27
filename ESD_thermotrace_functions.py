@@ -1,6 +1,6 @@
 '''
 This file contains all the needed functions to run the ESD_thermotrace simulations
-Last edited by A. Madella on 26th November 2020
+Last edited by A. Madella on 27th November 2020
 '''
 
 import numpy as np                                 # library for arrays
@@ -204,7 +204,22 @@ class DEM:
 ############################################################################################################
 
 def import_bedrock_data(path):
-    bd = pd.read_excel(path)
+    '''
+    function to import the bedrock data
+    path - string of path ending with either .xlsx or .csv extension
+    the linked table should have the following header:
+    latitude, longitude, elevation, age, age_u, zero_age_depth
+        - latitude and longitude must be WGS1984 values
+        - age and age_u inform the age and related uncertainty in million years
+        - zero_age_depth informs the depth at which the thermochronometric ages are reset.
+        - this latter column can be blank, in which case the depth is assigned to equal elevation-5000 m
+        - both elevation and zero_age_depth are in meters above sea level
+    '''
+    try:
+        bd = pd.read_excel(path)
+    except:
+        bd = pd.read_csv(path)
+
     bd.sort_values(by='elevation',inplace=True)
     z = bd.elevation.values
     try:
