@@ -852,6 +852,56 @@ def plot_distributions(pops_dict, dists_dict, ref_scen, detr_labels, saveas, noi
 
 ############################################################################################################
 
+def get_probabilities(pops_dict, dists_dict, all_k, k_iter, scen_labels, ref_scen):
+    '''
+    makes a dictionary containing the probabilities that each scenario can be discerned from ref_scen,
+    based on the KS statistics, for different sample sizes.
+    pops_dict: dictionary of all simulated populations
+    dists_dict: dictionary of distribution dataframes, having "vals" and "cdf_y" columns
+    all_k: 1D-array of k values (integers)
+    k_iter: number of iterations
+    scen_labels: list of scenario labels to be compared
+    ref_scen: the label of the reference scenario, based on which prob_dict has been made
+    '''
+    # skip this if there is only one scenario
+    if len(scen_labels)>1:
+        # calculate 95% confidence divergence for each k, between reference n=∞ and reference n=size of dd
+        Dc_within, D_dist_dict, Dc = {}, {}, [] # prepare dictionaries and list to store results
+        for k in all_k: # get array of random divergencies, using KS statistic
+            D_arr = np.array([get_KS(np.random.choice(pops_dict[ref_scen],k), dists_dict[ref_scen]) for element in np.arange(k_iter)])
+            D_arr.sort() # sort values
+            D_arr_prob = (np.arange(D_arr.size)+1)/D_arr.size # calculate cumulative probability of each value
+            ind95 = np.where(D_arr_prob<=0.95)[0][-1] # index of the 95th percentile
+            Dc.append(D_arr[ind95]) # store values
+            D_dist_dict[ref_scen+'_'+str(k)] = [D_arr, D_arr_prob]
+        Dc_within[ref_scen] = Dc # list of critical distances, each for a k
+
+        scen_labels1 = scen_labels.copy()
+        scen_labels1.pop(scen_labels1.index(ref_scen)) # now remove ref_scen from labels for the next plot
+        for scen in scen_labels1:
+            for k in all_k: # get array of random divergences, using KS statistic
+                D_arr = np.array([get_KS(np.random.choice(pops_dict[scen],k), dists_dict[ref_scen]) for i in np.arange(k_iter)])
+                D_arr.sort() # sort values
+                D_arr_prob = (np.arange(D_arr.size)+1)/D_arr.size # calculate cumulative probability of each value
+                D_dist_dict[scen+'_'+str(k)] = [D_arr, D_arr_prob]
+
+        # Calculate confidence as function of the number of grains
+        # Compare Dc_within to scenarios for all k and get probability of scenarios being discerned from ref_scen
+        probs = {}
+        for scen in scen_labels1:
+            probs1 = []
+            for i in np.arange(len(all_k)): # for all k values
+                # get index of element where distance scenario-ref_scen is greater than critical distance Dc_within
+                ind = np.where(D_dist_dict[scen+'_'+str(all_k[i])][0]>Dc_within[ref_scen][i])[0][0]
+                # get complementary probability at position ind (i.e. how many iterations are greater than that)
+                probs1.append(100*(1-D_dist_dict[scen+'_'+str(all_k[i])][1][ind]))
+            probs[scen] = probs1
+        return probs
+    else:
+        return None
+
+############################################################################################################
+
 def plot_confidence(prob_dict, all_k, ref_scen, saveas, num_of_colors, colmap=scm6.hawaii):
     '''
     plots the confidence level as function of sample size
@@ -862,28 +912,32 @@ def plot_confidence(prob_dict, all_k, ref_scen, saveas, num_of_colors, colmap=sc
     num_of_colorss: number of colors to iterate through,
                     must equal the number of colors plotted before, to be consistent
     '''
-    sns.set_style('white')
-    fig,ax = plt.subplots(figsize=(12,8))
 
-    # plot grey fields
-    ax.fill_between([all_k[0],all_k[-1]],[95,95],[68,68],color='k',alpha=0.1)
-    ax.text(all_k[0]+0.5,96,'95%',fontdict=dict(size=20))
-    ax.fill_between([all_k[0],all_k[-1]],[68,68],color='k',alpha=0.2)
-    ax.text(all_k[0]+0.5,69,'68%',fontdict=dict(size=20))
-    color=iter(colmap(np.linspace(0,1,num_of_colors)))
-    next(color) # skip one color for Euni
-    leg=[]
-    for key,i in prob_dict.items():
-        c = next(color)
-        ax.plot(all_k, smooth(i), c=c, alpha=1)
-        leg.append(key)
-    ax.set(xlim=(all_k[0],all_k[-1]), ylim=(0,101), yticks=[0,20,40,60,80,100])
-    ax.set_xlabel('number of grains',fontdict=dict(size=20, weight='bold'))
-    ax.set_ylabel('confidence level [%]',fontdict=dict(size=20, weight='bold'))
-    ax.set_title('Confidence of discerning from "'+ref_scen+'" as function of sample size',
-                 fontdict=dict(size=20,weight='bold'), pad=10)
-    ax.legend(leg, loc='lower right')
-    fig.savefig(saveas, dpi=200)
+    if prob_dict==None:
+        warnings.warn('There are no erosion scenarios to compare to {}, so the plot would be empty'.format(ref_scen))
+    else:
+        sns.set_style('white')
+        fig,ax = plt.subplots(figsize=(12,8))
+
+        # plot grey fields
+        ax.fill_between([all_k[0],all_k[-1]],[95,95],[68,68],color='k',alpha=0.1)
+        ax.text(all_k[0]+0.5,96,'95%',fontdict=dict(size=20))
+        ax.fill_between([all_k[0],all_k[-1]],[68,68],color='k',alpha=0.2)
+        ax.text(all_k[0]+0.5,69,'68%',fontdict=dict(size=20))
+        color=iter(colmap(np.linspace(0,1,num_of_colors)))
+        next(color) # skip one color for Euni
+        leg=[]
+        for key,i in prob_dict.items():
+            c = next(color)
+            ax.plot(all_k, smooth(i), c=c, alpha=1)
+            leg.append(key)
+        ax.set(xlim=(all_k[0],all_k[-1]), ylim=(0,101), yticks=[0,20,40,60,80,100])
+        ax.set_xlabel('number of grains',fontdict=dict(size=20, weight='bold'))
+        ax.set_ylabel('confidence level [%]',fontdict=dict(size=20, weight='bold'))
+        ax.set_title('Confidence of discerning from "'+ref_scen+'" as function of sample size',
+                     fontdict=dict(size=20,weight='bold'), pad=10)
+        ax.legend(leg, loc='lower right')
+        fig.savefig(saveas, dpi=200)
 
 ############################################################################################################
 
