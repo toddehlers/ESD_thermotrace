@@ -203,6 +203,54 @@ class DEM:
 
 ############################################################################################################
 
+def import_dem(dem_filename, ipf):
+    '''
+    imports the dem of the study area
+    '''
+    key = dem_filename[:dem_filename.find('.')]
+    dem = DEM(key)
+    dem.from_ascii(ipf+'/'+dem_filename)
+    dem.info()
+    return dem
+
+############################################################################################################
+
+def import_e_maps(e_map_filenames, ipf):
+    '''
+    imports the specified erosion map files and makes a dictionary of them
+    '''
+    e_maps = {}
+    # fill the dictionary, if erosion maps are given
+    if len(e_map_filenames)>0:
+        count=0
+        for i in e_map_filenames:
+            count+=1
+            key = i[:i.find('.')]
+            e_maps[key] = DEM(key)
+            e_maps[key].from_ascii(ipf+'/'+i)
+            e_maps[key].info()
+    return e_maps
+
+############################################################################################################
+
+def import_age_map(age_map_filename, age_map_u_filename, ipf, interp_method):
+    '''
+    checks for the interpolation method,
+    if 'imp' it imports the specified maps of bedrock age and related uncertainty
+    '''
+    if interp_method == 'imp':
+        age_map = DEM('bedrock age')
+        age_map.from_ascii(ipf+'/'+age_map_filename)
+        age_map.info()
+        age_map_u = DEM('bedrock age uncertainty')
+        age_map_u.from_ascii(ipf+'/'+age_map_u_filename)
+        age_map_u.info()
+        return age_map, age_map_u
+    else:
+        return None, None
+
+############################################################################################################
+
 def import_bedrock_data(path):
     '''
     function to import the bedrock data
@@ -941,79 +989,90 @@ def plot_confidence(prob_dict, all_k, ref_scen, saveas, num_of_colors, colmap=sc
 
 ############################################################################################################
 
-def make_pops_1sigma(dd, pops, dists, scen_labels, iterations):
+def make_pops_1sigma(dd, n):
     '''
-    makes dictionary of populations that account for 1 sigma error,
-    also makes the dataframe to be plotted as violins below.
-    This is a collection of several dissimilarities calculated between subsampled scenarios
+    makes dictionary of detrital populations that account for 1 sigma error
+    '''
+    pops_1s = OrderedDict() # allocate dictionary to store all 1sigma populations
+    for key,item in dd.items():
+        # make empty array to store new population
+        pop_1s = np.array([])
+        for j in item.index:
+            # for each detrital age, draw n normally distributed ages based on analytical error and store them
+            pop_1s = np.append(pop_1s,np.random.normal(item.loc[j].age, item.loc[j].age_u, n))
+        # store population in dictionary
+        pops_1s[key] = pop_1s
+    return pops_1s
+
+############################################################################################################
+
+def get_scen2detr_diss(dd, pops, pops_1s, dists, scen_labels, n):
+    '''
+    makes the dataframe to be plotted as violins below.
+    This is a collection of all dissimilarities calculated between subsampled scenarios
     and the observed detrital populations
     '''
-    pops_1sigma, scen2detr = OrderedDict(), OrderedDict() # allocate dictionaries to store all 1sigma populations
-
+    scen2detr = OrderedDict() # allocate dictionary to store all dissimilarities
     for key,item in dd.items():
-        # allocate dataframe to store divergences scen2detr from all iterations
-        scen2detr[key] = pd.DataFrame(columns=['divergence','metric','scenario'])
-        # make empty lists and array to store values of each iteration
-        KS_list, Kui_list, scenario_list, pop_1sigma = [], [], [], np.array([])
-        for j in item.index:
-            # for each detrital age, draw 100 normally distributed ages based on analytical error and store them
-            pop_1sigma = np.append(pop_1sigma,np.random.normal(item.loc[j].age, item.loc[j].age_u, iterations))
-        # store population in dictionary
-        pops_1sigma[key] = pop_1sigma
-
+        # make empty lists to store values of each iteration
+        KS_list, Kui_list, scenario_list = [], [], []
         # iterate through erosion scenarios
         for scen in scen_labels:
-            KS_list = KS_list + [get_KS(np.random.choice(pops[scen],len(item)),dists[key]) for i in np.arange(iterations)]
-            Kui_list = Kui_list + [get_Kui(np.random.choice(pops[scen],len(item)),dists[key]) for i in np.arange(iterations)]
-            scenario_list = scenario_list + [scen for i in np.arange(iterations)]
+            KS_list = KS_list + [get_KS(np.random.choice(pops[scen],len(item)),dists[key]) for i in np.arange(n)]
+            Kui_list = Kui_list + [get_Kui(np.random.choice(pops[scen],len(item)),dists[key]) for i in np.arange(n)]
+            scenario_list = scenario_list + [scen for i in np.arange(n)]
 
-        # and do the same analysis for the new pop_1sigma
-        KS_list = KS_list + [get_KS(np.random.choice(pop_1sigma,len(item)),dists[key]) for i in np.arange(iterations)]
-        Kui_list = Kui_list + [get_Kui(np.random.choice(pop_1sigma,len(item)),dists[key]) for i in np.arange(iterations)]
-        scenario_list = scenario_list + [key for i in np.arange(iterations)]
+        # and do the same analysis for the new pop_1s
+        KS_list = KS_list + [get_KS(np.random.choice(pops_1s[key],len(item)),dists[key]) for i in np.arange(n)]
+        Kui_list = Kui_list + [get_Kui(np.random.choice(pops_1s[key],len(item)),dists[key]) for i in np.arange(n)]
+        scenario_list = scenario_list + [key for i in np.arange(n)]
 
+        # allocate dataframe to store divergences scenario-to-detrital from all iterations
+        scen2detr[key] = pd.DataFrame(columns=['divergence','metric','scenario'])
         # write dataframe
         scen2detr[key].divergence = KS_list + Kui_list
         scen2detr[key].metric = ['KS stat' for i in KS_list]+['Kuiper stat' for i in Kui_list]
         scen2detr[key].scenario = scenario_list + scenario_list
-    return pops_1sigma, scen2detr
+    return scen2detr
 
 ############################################################################################################
 
-def get_quantiles_and_overlaps(dd, scen2detr, pops, dists, scen_labels, iterations):
+def get_quantiles_and_overlaps(dd, scen2detr, pops, dists, scen_labels, n):
     '''
     makes dictionary of 68% and 95% quantiles of the distribution of KS stats to each observed detrital distribution
     also, for each observed detrital, it makes a list of overlapping percentages.
     These inform how many of the iterations fall in the 95% range of noise due to sample size
     '''
-    # dictionaries to store 68% and 95% quantiles of noise (KS stat) due to sample size
-    # and degree of overlap among calculated KS distributions
-    q68q95, overlaps = OrderedDict(), OrderedDict()
+    q68q95 = OrderedDict() # allocate dictionary
+    for scen in scen_labels: # iterate through scenarios
+        # get the 68% and 95% percentiles for the scenarios
+        KSarr_s = np.array([get_KS(np.random.choice(pops[scen],100),dists[scen]) for i in np.arange(n)])
+        KSarr_s.sort()
+        q68q95[scen] = [KSarr_s[np.nonzero((np.arange(n)+1)/n >= q)[0][0]] for q in (0.68,0.95)]
 
-    for key,item in dd.items(): # iterate through imported detrital populations
-        overlaps[key] = [] # prepare empty list
-        KSarrays = scen2detr[key].where(scen2detr[key].metric=='KS stat').dropna() # do not consider Kuiper stat
-        # select array of KS stats for current detrital distribution
-        KSarr_d = KSarrays.where(KSarrays.scenario==key).dropna().divergence.values
-        KSarr_d.sort() # sort array
-        # get the 68% and 95% percentiles
-        q0 = KSarr_d.min()
-        q68q95[key] = [KSarr_d[np.nonzero((np.arange(iterations)+1)/iterations >= q)[0][0]] for q in (0.68,0.95)]
+    if len(dd)<1:
+        return q68q95, {}
 
-        for scen in scen_labels: # iterate through scenarios
-            # select array of dissimilarity (KS stat) to the detrital distribution
-            KSarr_2d = KSarrays.where(KSarrays.scenario==scen).dropna().divergence.values
-            KSarr_2d.sort() # sort it
-
-            # calculate how many elements are comprised in the range q0 - q95 of the detrital noise
-            overlaps[key].append(np.where((KSarr_2d>=q0)&(KSarr_2d<=q68q95[key][-1]),1,0).sum()/iterations)
-
-            # get the 68% and 95% percentiles for the scenarios too
-            KSarr_s = np.array([get_KS(np.random.choice(pops[scen],len(item)),dists[scen]) for i in np.arange(iterations)])
-            KSarr_s.sort()
-            q68q95[scen] = [KSarr_s[np.nonzero((np.arange(iterations)+1)/iterations >= q)[0][0]] for q in (0.68,0.95)]
-
-    return q68q95, overlaps
+    else:
+        # dictionary to store degree of overlap among calculated KS distributions
+        overlaps = OrderedDict()
+        for key,item in dd.items(): # iterate through imported detrital populations
+            overlaps[key] = [] # prepare empty list
+            KSarrays = scen2detr[key].where(scen2detr[key].metric=='KS stat').dropna() # do not consider Kuiper stat
+            # select array of KS stats to current detrital distribution
+            KSarr_d = KSarrays.where(KSarrays.scenario==key).dropna().divergence.values
+            KSarr_d.sort() # sort array
+            # get the 68% and 95% percentiles
+            q0 = KSarr_d.min()
+            q68q95[key] = [KSarr_d[np.nonzero((np.arange(n)+1)/n >= q)[0][0]] for q in (0.68,0.95)]
+            # iterate through scenarios
+            for scen in scen_labels:
+                # select array of dissimilarity (KS stat) to the detrital distribution
+                KSarr_2d = KSarrays.where(KSarrays.scenario==scen).dropna().divergence.values
+                KSarr_2d.sort() # sort it
+                # calculate how many elements are comprised in the range q0 - q95 of the detrital noise
+                overlaps[key].append(np.where((KSarr_2d>=q0)&(KSarr_2d<=q68q95[key][-1]),1,0).sum()/n)
+        return q68q95, overlaps
 
 ############################################################################################################
 
@@ -1055,6 +1114,23 @@ def plot_violins(data, label, column, saveas, k_iter, sam_size, overlaps, colmap
     ax2.set_title('Noise due to n='+str(sam_size), pad=10, fontdict={'weight':'bold'})
     sns.set_style('white') # set back the seaborn style back to white with no lines
     fig.savefig(saveas, dpi=200) # save figure
+
+############################################################################################################
+
+def get_diss_matrix(pops_dict):
+    '''
+    prepares dissimilarity matrix based on KS statistics,
+    to be used for MDS
+    '''
+    l = list(pops_dict.keys())
+    diss = np.zeros((len(l),len(l)))
+    for i in np.arange(len(l)):
+        for j in np.arange(len(l)):
+            diss[i,j] = get_KS(pops_dict[l[i]], make_cdf(pops_dict[l[j]]))
+    for i in np.arange(len(l)):
+        for j in np.arange(len(l)):
+            diss[j,i] = diss[i,j] # only half of the matrix counts
+    return diss
 
 ############################################################################################################
 
