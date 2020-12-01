@@ -1,6 +1,6 @@
 '''
 This file contains all the needed functions to run the ESD_thermotrace simulations
-Last edited by A. Madella on 27th November 2020
+Last edited by A. Madella on 1st December 2020
 '''
 
 import numpy as np                                 # library for arrays
@@ -44,8 +44,8 @@ def read_input_file(filename):
             except:
                 pass
 
-    # make lists, where lists are needed
-    for i in [3,6]:
+    # make empty lists for e_maps and detrital data, if not given
+    for i in [3,7]:
         if len(fid[i])<3:
             fid[i].append([])
         elif len(fid[i])>3:
@@ -53,14 +53,15 @@ def read_input_file(filename):
         elif type(fid[i][2]) != list:
             fid[i][2] = fid[i][2:]
 
-    # make boolean where needed
-    if fid[8][-1].capitalize() == 'True':
-        fid[8][-1] = True
-    elif fid[8][-1].capitalize() == 'False':
-        fid[8][-1] = False
+    # make True/False for example_scenarios flag
+    ex_scen = fid[9]
+    if ex_scen[-1].capitalize() == 'True':
+        ex_scen[-1] = True
+    elif ex_scen[-1].capitalize() == 'False':
+        ex_scen[-1] = False
 
-    # make Nones where needed
-    for line in [fid[5]]+fid[10:]:
+    # change other ungiven parameters to None
+    for line in [fid[4]]+[fid[6]]+fid[11:]:
         if len(line)<3:
             line.append(None)
 
@@ -205,32 +206,34 @@ class DEM:
 
 def import_dem(dem_filename, ipf):
     '''
-    imports the dem of the study area
+    imports any dem
     '''
-    key = dem_filename[:dem_filename.find('.')]
-    dem = DEM(key)
-    dem.from_ascii(ipf+'/'+dem_filename)
-    dem.info()
-    return dem
+    try:
+        key = dem_filename[:dem_filename.find('.')]
+        dem = DEM(key)
+        dem.from_ascii(ipf+'/'+dem_filename)
+        dem.info()
+        return dem
+    except:
+        return None
 
 ############################################################################################################
 
-def import_e_maps(e_map_filenames, ipf):
+def import_e_maps(e_map_filenames, f_map_filename, ipf):
     '''
-    imports the specified erosion map files and makes a dictionary of them
+    imports the specified erosion map files, the fertility map and makes a dictionary of them
     '''
     e_maps = {}
     # fill the dictionary, if erosion maps are given
-    if len(e_map_filenames)>0:
-        count=0
-        for i in e_map_filenames:
-            count+=1
-            key = i[:i.find('.')]
+    try:
+        for M in e_map_filenames+[f_map_filename]:
+            key = M[:M.find('.')]
             e_maps[key] = DEM(key)
-            e_maps[key].from_ascii(ipf+'/'+i)
+            e_maps[key].from_ascii(ipf+'/'+M)
             e_maps[key].info()
-    return e_maps
-
+        return e_maps
+    except:
+        return e_maps
 ############################################################################################################
 
 def import_age_map(age_map_filename, age_map_u_filename, ipf, interp_method):
@@ -298,13 +301,13 @@ def import_bedrock_data(path):
 
 ############################################################################################################
 
-def plot_input_data(dem, e_maps, e_map_filenames, ws_outline, interp_method, bd,
+def plot_input_data(dem, e_maps, ws_outline, interp_method, bd,
                     dem_cmap, age_cmap, ero_cmap, age_map, age_map_u, saveas):
     '''
     function to plot input dem, bedrock samples, catchment outline, erosion maps.
     dem - instance of the class DEM, the imported digital elevation model
     e_maps - the dictionary of erosion maps
-    e_map_filenames - the list of e_maps filenames
+    f_map - the imported mineral fertility map
     ws_outline - watershed outline, geopandas.DataFrame
     interp_method - the chosen method of interpolation (see jupyter notebook)
     bd - lan, lot, age, age_sd table, (pandas.DataFrame)
@@ -318,7 +321,7 @@ def plot_input_data(dem, e_maps, e_map_filenames, ws_outline, interp_method, bd,
 
     # make figure, gridspec and axes
     # you can edit the parameter "figsize" if the aspect ratio doesn't fit
-    if len(e_map_filenames)>0:
+    if len(e_maps)>0:
         fig = plt.figure(figsize=(15,15*2*dem.nrows/dem.ncols))
         gspec = gs.GridSpec(2,len(e_maps.keys()),figure=fig)
     else:
@@ -344,7 +347,7 @@ def plot_input_data(dem, e_maps, e_map_filenames, ws_outline, interp_method, bd,
         ax1.set_title('Input DEM',pad=10, fontdict=dict(weight='bold'))
 
     # plot imported erosional maps, if present
-    if len(e_map_filenames)>0:
+    if len(e_maps)>0:
         count = 0
         row2 = []
         max_e = max([np.nanmax(m.z) for k,m in e_maps.items()]) # max erosion rate imported
@@ -358,7 +361,7 @@ def plot_input_data(dem, e_maps, e_map_filenames, ws_outline, interp_method, bd,
             ax.set_title('Erosion Map: '+k, fontdict=dict(weight='bold'))
             if count == gspec.get_geometry()[1]:
                 cb3 = fig.colorbar(em,orientation='horizontal',ax=row2)
-                cb3.set_label('erosivity')
+                cb3.set_label('erosional/fertility weight')
 
     fig.savefig(saveas, dpi=200) # save figure
 
@@ -731,6 +734,60 @@ def plot_clipped_age_map(dem, age_interp_map_clp, ws_outline, bd, interp_method,
                    vmin=np.nanmin(age_interp_map_clp), vmax=np.nanmax(age_interp_map_clp))
 
     fig.savefig(saveas, dpi=200) # save fig
+
+############################################################################################################
+
+def make_pops_dict(ws_data_filename, f_map_filename, multiplier):
+    '''
+    Makes a dictionary of predicted detrital grain populations, one for each scenario.
+    ws_data_filename - .xlsx file of the exported pd.DataFrame of watershed data with following columns:
+                x,y,z,age,age_u%, a column of erosional weight for each e_map, Euni, example scenarios
+    f_map_filename - input filename of the fertility map (can be None)
+    multi - multiplication factor to be used if no fertility map is present
+    returns pops_dictionary and scenario_labels
+    '''
+    pops = OrderedDict() # preallocate dictionary of populations
+    ws_data = pd.read_excel(ws_data_filename)
+    scen_labels = list(ws_data.columns)[5:] # list of scenario labels to iterate through
+    try:
+        # use fertility values make grain populations, if present
+        fkey = f_map_filename[:f_map_filename.find('.')] # remember key of fertility map
+        scen_labels.remove(fkey) # remove it from the scenarios
+        ws_data['Multiplier'] = ws_data[fkey]*multiplier
+    except:
+        # do not use fertility values to make populations
+        ws_data['Multiplier'] = ws_data.Euni*multiplier
+    for scen in scen_labels:
+        # assign to each cell an amount of grains proportional to fertility and/or erosional weight
+        # make column that to informs how many grains (N) per cell
+        ws_data['N_'+scen] = np.rint(ws_data[scen]*ws_data.Multiplier)
+        # make a gaussian distribution for each cell
+        # Draw from it N grains and store them in a 1D-array, in the populations dictionary
+        pops[scen] = np.array([])
+        for A,U,N in zip(ws_data.age, ws_data['age_u%'], ws_data['N_'+scen]):
+            pops[scen] = np.append(pops[scen], np.random.normal(A,np.abs(A*U/100),int(N)))
+    return pops, scen_labels
+
+############################################################################################################
+
+def get_detr_pops(detrital_ages_filenames, pops, ipf):
+    '''
+    adds the detrital populations to the pops dictionary
+    and returns also a list of detrital labels and a dictionary of the imported detrital data
+    detrital_ages_filenames - list of detrital data filenames (input parameters), it can also be []
+    pops - dictionary of arrays with grain populations, one for each scenario
+    ipf - string, the path to the input folder
+    '''
+    dd, detr_labels = OrderedDict(), []
+    for filename in detrital_ages_filenames:
+        label = filename[:filename.find('.')]
+        detr_labels.append(label)
+        try:
+            dd[label] = pd.read_excel(ipf+'/'+filename)
+        except:
+            dd[label] = pd.read_csv(ipf+'/'+filename)
+        pops[label] = dd[label].age.values
+    return pops, dd, detr_labels
 
 ############################################################################################################
 

@@ -8,26 +8,28 @@
 
 4 erosion_map_filenames:
 
-5 watershed_outline_filename: inyo_ws.shp
+5 fertility_map_filename:
 
-6 bedrock_ages_filename: bd_highsierra.xlsx
+6 watershed_outline_filename: inyo_ws.shp
 
-7 detrital_ages_filenames: dd_inyo_fine.xlsx
+7 bedrock_ages_filename: bd_highsierra.xlsx
+
+8 detrital_ages_filenames: dd_inyo_fine.xlsx
 
 
 ############### OTHER PARAMETERS AND OPTIONS ###############
 
-8 resolution: 90
+9 resolution: 90
 
-9 example_scenarios: true
+10 example_scenarios: true
 
-10 interpolation_method: zln
+11 interpolation_method: zln
 
-11 extrapolation_radius: 2000
+12 extrapolation_radius: 2000
 
-12 age_map_filename:
+13 age_map_filename:
 
-13 age_map_uncertainty_filename:
+14 age_map_uncertainty_filename:
 
 
 ############### INSTRUCTIONS ###############
@@ -48,11 +50,16 @@
 # Accepted coordinate reference system and format, same as 3.
 # This parameter can also be left empty
 
-# 5. Filename of the watershed outline with .shp extension (Shapefile)
+# 5. Filename of the bedrock mineral fertility map of the study area.
+# This is a raster, where each cell informs a local weight of mineral fertility.
+# Accepted coordinate reference system and format, same as 3.
+# This parameter can also be left empty
+
+# 6. Filename of the watershed outline with .shp extension (Shapefile)
 # The input folder should also contain a .shx file with the same name,
 # This is automatically created during shapefile export from any GIS software
 
-# 6. Input bedrock ages filename, as .xlsx or .csv format
+# 7. Input bedrock ages filename, as .xlsx or .csv format
 # This should be a table with the following header:
 # latitude, longitude, elevation, age, age_u, zero_age_depth
 # age and age_u inform the age and related uncertainty in million years
@@ -61,18 +68,18 @@
 # coordinates must be WGS1984 values
 # elevation and zero_age_depth are in meters above sea level
 
-# 7. One or more detrital grain ages, .xlsx or .csv format, separated by a space
+# 8. One or more detrital grain ages, .xlsx or .csv format, separated by a space
 # These should have at least 2 columns labeled age and age_u
 # Any other column will be ignored
 # This parameter can also be left empty
 
-# 8. This is the target resolution of the interpolated surface in meters
+# 9. This is the target resolution of the interpolated surface in meters
 
-# 9. If true, 2 example erosion scenarios will be tested
+# 10. If true, 2 example erosion scenarios will be tested
 # these are: i) exponential increase with elevation, ii) exponential decrease with elevation
 # additional scenarios can be added by editing the code in the jupyter notebook.
 
-# 10. This indicates the interpolation method to be used, options are:
+# 11. This indicates the interpolation method to be used, options are:
 # rbf - linear Radial Basis Function
 # https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.Rbf.html#scipy.interpolate.Rbf
 # int - 3D linear interpolation
@@ -81,11 +88,11 @@
 # zln - each z gets assigned an age based on a linear regression of age-elevation data.
 # imp - import your own age map and uncertainty (ASCII files referenced in WGS1984, same as 3.)
 
-# 11. If ext is chosen as interpolation method, an inverse-distance-weight is used to assign ages
+# 12. If ext is chosen as interpolation method, an inverse-distance-weight is used to assign ages
 # to the cells out of the interpolation hull, but not farther than this search radius, in meters.
 # This parameter can also be left empty
 
-# 12/13. If imp is chosen as interpolation method, these indicate the filenames of
+# 13/14. If imp is chosen as interpolation method, these indicate the filenames of
 # the interpolated surface bedrock age map and the relative uncertainty in %
 # both must be ASCII files referenced in WGS1984, same as 3.
 # These parameters can also be left empty
