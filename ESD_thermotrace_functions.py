@@ -1194,7 +1194,7 @@ def get_diss_matrix(pops_dict):
 def plot_MDS_results(x, colmap, pops, q68q95, scen_labels, saveas):
     '''
     makes a plot of the MDS prediction, where input dissimilarities are embedded in a 2D-space.
-    A goodness of fit "Shepherd Plot" is also shown to evaluate the model fit.
+    A goodness of fit "Shepard Plot" is also shown to evaluate the model fit.
 
     x - fitted MDS model
     colmap - an iterable colormap
