@@ -19,13 +19,13 @@
 
 ############### OTHER PARAMETERS AND OPTIONS ###############
 
-9 resolution: 90
+9 resolution: 30
 
 10 example_scenarios: true
 
 11 interpolation_method: zln
 
-12 extrapolation_radius: 2000
+12 extrapolation_radius:
 
 13 age_map_filename:
 

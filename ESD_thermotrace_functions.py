@@ -1244,7 +1244,7 @@ def plot_MDS_results(x, colmap, pops, q68q95, scen_labels, saveas):
     ax2.plot(diss.reshape(diss.size), diss.reshape(diss.size),'k')
     ax2.scatter(diss.reshape(diss.size), diss_emb.reshape(diss.size), alpha=0.5)
     ax2.set_title('Goodness of fit', pad=10, fontdict={'weight':'bold'})
-    ax2.set_xlabel('observed dissimilarity', fontdict={'weight':'bold'})
+    ax2.set_xlabel('input dissimilarity', fontdict={'weight':'bold'})
     ax2.set_ylabel('MDS-modeled dissimilarity', fontdict={'weight':'bold'})
     plt.tight_layout()
     fig.savefig(saveas, dpi=200) # save figure
