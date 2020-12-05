@@ -1,6 +1,6 @@
 '''
 This file contains all the needed functions to run the ESD_thermotrace simulations
-Last edited by A. Madella on 1st December 2020
+Last edited by A. Madella on 5th December 2020
 '''
 
 import numpy as np                                 # library for arrays
@@ -573,20 +573,21 @@ def make_errormap(dem, res, z, a, u, aa, xx_utm, yy_utm, zz, x_utm, y_utm, inter
 
 ############################################################################################################
 
-def make_errormap_zln(dem, z, a, u):
+def make_errormap_zln(dem, z, a, u, n=1000):
     '''
-    for the method 'zln' determine the regression error as a function of elevation only
+    for the method 'zln', it iteratively determines the regression error as a function of elevation only
     and assign each elevation the corresponding error
     '''
     error_interp = np.zeros(z.size)
     for i in np.arange(z.size):
         A_iterations = []
-        for j in np.arange(1000):
+        for j in np.arange(n):
             A1 = np.array([np.random.normal(AGE,UNC) for AGE,UNC in zip(a,u)])
             reg1 = LinearRegression().fit(z.reshape(-1,1),A1.reshape(-1,1))
             A_iterations.append(reg1.intercept_+reg1.coef_*z[i])
-        error_interp[i] = np.std(A_iterations)/a[i]*100
-    error_total = error_interp# total error is the same, because x,y components don't matter in this method
+        # multiply standard deviation by 1.96 to approximate 95% confidence
+        error_interp[i] = 1.96*np.std(A_iterations)/a[i]*100
+    error_total = error_interp # total error is the same, because x,y components don't matter in this method
     age_interp_error = np.interp(dem.zi_res_1d, z, error_total)
     age_interp_error_map = age_interp_error.reshape(dem.zi_res.shape)
     return error_interp, age_interp_error_map
@@ -610,7 +611,7 @@ def plot_linreg(R2, reg0, z, a, u, error_interp, saveas):
     fig,ax = plt.subplots(1,1,figsize=(10,6))
     a_new = reg0.intercept_+reg0.coef_[0]*z
     ax.fill_between(x=z, y1=a_new-error_interp/100*a_new, y2=a_new+error_interp/100*a_new,color='k',alpha=0.3,
-                   label='st. dev from 1000 iterations')
+                   label='95% confidence from 1000 iterations')
     ax.plot(z, a_new, label='_nolegend_')
     ax.errorbar(z, a, yerr=u, fmt='ok', label='_nolegend_')
     ax.set(xlabel='elevation [m]', ylabel='age [My]')
@@ -1021,7 +1022,7 @@ def plot_confidence(prob_dict, all_k, ref_scen, saveas, num_of_colors, colmap=sc
     if prob_dict==None:
         warnings.warn('There are no erosion scenarios to compare to {}, so the plot would be empty'.format(ref_scen))
     else:
-        sns.set_style('white')
+        sns.set_style('ticks')
         fig,ax = plt.subplots(figsize=(12,8))
 
         # plot grey fields
@@ -1041,7 +1042,15 @@ def plot_confidence(prob_dict, all_k, ref_scen, saveas, num_of_colors, colmap=sc
         ax.set_ylabel('confidence level [%]',fontdict=dict(size=20, weight='bold'))
         ax.set_title('Confidence of discerning from "'+ref_scen+'" as function of sample size',
                      fontdict=dict(size=20,weight='bold'), pad=10)
+
+        from matplotlib.ticker import MultipleLocator
+        ax.xaxis.set_major_locator(MultipleLocator(20))
+        ax.yaxis.set_major_locator(MultipleLocator(20))
+        ax.xaxis.set_minor_locator(MultipleLocator(5))
+        ax.yaxis.set_minor_locator(MultipleLocator(5))
+
         ax.legend(leg, loc='lower right')
+        sns.set_style('white')
         fig.savefig(saveas, dpi=200)
 
 ############################################################################################################
