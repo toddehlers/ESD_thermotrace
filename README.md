@@ -9,13 +9,19 @@ The files in this folder having *.ipynb* and *.py* extensions host all the code.
 The workflow of ESD_thermotrace is briefly summarized here below. For each main step, we specify inputs, outputs and methods.
 
 **1) Bedrock age map interpolation**
+
 *Input*
+
 - Bedrock age dataset (table data)
 - Digital elevation model of the studied catchment (grid data)
 - Cellsize (user-defined resolution of the age map)
+
 *Output*
+
 - Bedrock age map (grid data)
+
 *Method*
+
 In this step a bedrock age map is computed, such that differences to the observed dataset are minimized. Here, users can choose among the following methods:
 - [1D linear regression](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html) (bedrock age variance is explained only by changes in elevation)
 - [3D linear Radial Basis Function](https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.Rbf.html#scipy.interpolate.Rbf) (bedrock age variance is explained by changes in X, Y, Z coordinates)
@@ -23,56 +29,86 @@ In this step a bedrock age map is computed, such that differences to the observe
 Alternatively, users can import their own age and age-uncertainty map.
 
 **2) Bedrock age uncertainty map interpolation**
+
 *Input*
+
 - Bedrock age dataset (table)
 - Bedrock age map (grid data)
+
 *Output*
+
 - Bedrock age uncertainty map
+
 *Method*
+
 The uncertainty of the age map is estimated through bootstrapping. This means that the age map is iteratively recalculated as many times as the measured bedrock ages. For each iteration i, one age A_i is excluded from the input. The difference between the excluded age A_i and the interpolated age is taken as the age error E_i at the coordinates X_A_i, Y_A_i. Where the age analytical error is larger than the interpolation error, E_i will equal the root of the sum of the squared errors. The age uncertainty map is then interpolated from all the local errors E_i.
 Alternatively, If users opted to import their own age map, a related age uncertainty map is required too.
 
 **3) Extract of catchment bedrock age, coordinates and erosion data**
+
 *Input*
+
 - Outline of the catchment (shapefile)
 - Bedrock age and age uncertainty maps (grids)
 - Mineral fertility map (grid, optional)
 - Erosion scenarios (grid data and/or functions of X,Y,Z written in Python)
+
 *Output*
+
 A table of catchment data with one row per catchment cell and the following columns:
 - coordinates X, Y, Z
 - age and age uncertainty
 - Mineral fertility
 - one column per erosion scenario, each informing the local erosional weight.
+
 *Method*
+
 The data listed just above is saved into an excel table for each cell that falls within the imported catchment outline. A column for uniform erosion scenario "Euni" is included by default. 
 
 **4) Predict detrital grain age distributions for each erosion scenario**
+
 *Input*
+
 - Extracted table of catchment data
+
 *Output*
+
 - A predicted detrital age population per erosion scenario, having n>>1000
 - A predicted detrital age distribution for each of the populations
+
 *Method*
+
 Age populations are predicted as follows: for each scenario, a number of ages is drawn from a normal distribution in each cell. This normal age distribution is constructed from the local age and age uncertainty. The drawn number of grain ages is the product of the local mineral fertility, the erosional weight and an arbitrary multiplier (user-defined and constant for all cells).  For each age population, the related cumulative age distribution is constructed.
 
 **5) Evaluate the confidence of detecting erosion scenarios from a set of measured detrital ages**
+
 *Input*
+
 - One or more sets of measured detrital grain ages and related analytical uncertainty (table)
 - Predicted detrital populations and distributions (stored in a Python dictionary)
+
 *Output*
+
 - A graph informing the statistical confidence of discerning between erosion scenarios and uniform erosion "Euni", as a function of the number of observed grain ages (editable .pdf file)
+
 *Method*
+
 Firstly, the dissimilarity between a n=k subsample of "Euni" and n>>k "Euni" is estimated with a Monte Carlo simulation for a range of sample sizes k (30<k<140). Secondly, the dissimilarity between n>>k "Euni" and a n=k subsampled distribution of a predicted erosion scenario is estimated in the same manner. In all cases the KS (Kolmogorov-Smirnov) statistic is used as metric of dissimilarity between distributions. If the first dissimilarity is lesser than the second one, the two scenarios are considered statistically dissimilar. The success rate for each erosion scenario is plotted against the range of sample sizes k.
 
 **6) Evaluate the fit of the erosion scenarios to the observed detrital ages**
+
 *Input*
+
 - One or more sets of measured detrital grain ages and related analytical uncertainty (table)
 - Predicted detrital populations and distributions (stored in a Python dictionary)
+
 *Output*
+
 - A violin plot informing the distribution of dissimilarities between the erosion scenarios and the observed data (editable .pdf file)
 - A Multidimensional scaling (MDS) plot, informing the degree of overlap among the scenario distributions and the observed detrital age distribution (editable .pdf file)
+
 *Method*
+
 The dissimilarity between the observed cumulative age distribution (from k grain ages) and a n=k subset of each predicted detrital distribution is calculated 10000 times. Then, the distribution of these dissimilarities are plotted in the form of a violin plot. The degree of overlap among these distributions is also informed.
 The MDS plot is constructed following the approach described by [Vermeesch (2013)](https://www.sciencedirect.com/science/article/abs/pii/S0009254113000387)
 
