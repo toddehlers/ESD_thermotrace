@@ -41,7 +41,7 @@ Alternatively, users can import their own age and age-uncertainty map.
 
 *Method*
 
-The uncertainty of the age map is estimated through bootstrapping. This means that the age map is iteratively recalculated as many times as the measured bedrock ages. For each iteration i, one age A_i is excluded from the input. The difference between the excluded age A_i and the interpolated age is taken as the age error E_i at the coordinates X_A_i, Y_A_i. Where the age analytical error is larger than the interpolation error, E_i will equal the root of the sum of the squared errors. The age uncertainty map is then interpolated from all the local errors E_i.
+The uncertainty of the age map is estimated through bootstrapping. This means that the age map is iteratively recalculated as many times as the measured bedrock ages. For each iteration i, one age A_{i} is excluded from the input. The difference between the excluded age A_{i} and the interpolated age is taken as the age error E_{i} at the coordinates X_{A_{i}}, Y_{A_{i}}. Where the age analytical error is larger than the interpolation error, E_{i} will equal the root of the sum of the squared errors. The age uncertainty map is then interpolated from all the local errors E_{i}.
 Alternatively, If users opted to import their own age map, a related age uncertainty map is required too.
 
 **3) Extract of catchment bedrock age, coordinates and erosion data**
