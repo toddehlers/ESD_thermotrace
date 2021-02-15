@@ -1,6 +1,6 @@
 '''
 This file contains all the needed functions to run the ESD_thermotrace simulations
-Last edited by A. Madella on 5th December 2020
+Last edited by A. Madella on 15th February 2021
 '''
 
 import numpy as np                                 # library for arrays
@@ -26,8 +26,8 @@ def read_input_file(filename):
     '''
     function to read the input textfile
     the single argument must have extension .txt
-    returns a list of all the lines (splitted) where input parameters
-    are located in the last element of each line
+    it returns a list of all the lines
+    where input parameters are located in the last element of each splitted line
     '''
     fid = open(filename, 'r')
     fid = np.array(str(fid.read()).split('\n'))
@@ -71,7 +71,7 @@ def read_input_file(filename):
 
 class DEM:
     '''
-    class with all needed DEM attributes
+    class for digital elevation models, with all needed DEM attributes
     '''
     def __init__(self, name):
         self.name = name
@@ -79,7 +79,7 @@ class DEM:
     def from_ascii(self, filename):
         '''
         Function to read an ASCII raster, most commonly exported from ArcGIS or QGIS.
-        The first 6 lines must inform:
+        The first 6 lines of the file must start like this:
 
         ncols
         nrows
@@ -89,8 +89,6 @@ class DEM:
         NODATA_value
 
         followed by the raster values separated by spaces
-
-        if verbose=False, metadata is not printed, but only returned
         '''
 
         # read DEM text file
@@ -148,7 +146,7 @@ class DEM:
 
     def info(self):
         '''
-        Prints details of imported DEM, except nodata value
+        function to print details of imported DEM class, except nodata value
         '''
         print('\nMETADATA OF '+self.name+'\n')
         print('xllcorner = {}'.format(self.xllcorner))
@@ -206,7 +204,7 @@ class DEM:
 
 def import_dem(dem_filename, ipf):
     '''
-    imports any dem
+    imports any dem and makes a class instance out if 
     '''
     try:
         key = dem_filename[:dem_filename.find('.')]
@@ -221,7 +219,7 @@ def import_dem(dem_filename, ipf):
 
 def import_e_maps(e_map_filenames, f_map_filename, ipf):
     '''
-    imports the specified erosion map files, the fertility map and makes a dictionary of them
+    imports the specified erosion map files, the fertility map and makes a dictionary out of them
     '''
     e_maps = {}
     # fill the dictionary, if erosion maps are given
@@ -238,7 +236,7 @@ def import_e_maps(e_map_filenames, f_map_filename, ipf):
 
 def import_age_map(age_map_filename, age_map_u_filename, ipf, interp_method):
     '''
-    checks for the interpolation method,
+    it first checks for the interpolation method,
     if 'imp' it imports the specified maps of bedrock age and related uncertainty
     '''
     if interp_method == 'imp':
@@ -307,7 +305,6 @@ def plot_input_data(dem, e_maps, ws_outline, interp_method, bd,
     function to plot input dem, bedrock samples, catchment outline, erosion maps.
     dem - instance of the class DEM, the imported digital elevation model
     e_maps - the dictionary of erosion maps
-    f_map - the imported mineral fertility map
     ws_outline - watershed outline, geopandas.DataFrame
     interp_method - the chosen method of interpolation (see jupyter notebook)
     bd - lan, lot, age, age_sd table, (pandas.DataFrame)
