@@ -1,6 +1,6 @@
 '''
 This file contains all the needed functions to run the ESD_thermotrace simulations
-Last edited by A. Madella on 15th February 2021
+Last edited by A. Madella on 16th February 2021
 '''
 
 import numpy as np                                 # library for arrays
@@ -676,7 +676,7 @@ def clip_to_ws(raster, shp_filename, extent, input_folder, output_folder):
     crs = rasterio.crs.CRS.from_epsg(4326) # wgs1984: 4326
 
     # make new raster file from input, necessary to use rasterio's functions, and define the metadata
-    src = rasterio.open(output_folder+'/raster.tif', 'w', driver='GTiff',
+    src = rasterio.open(output_folder+'/temp/raster.tif', 'w', driver='GTiff',
                         height = raster.shape[0], width = raster.shape[1],
                         count = 1, dtype = str(raster.dtype),
                         crs = crs, transform=transform)
@@ -689,7 +689,7 @@ def clip_to_ws(raster, shp_filename, extent, input_folder, output_folder):
         shapes = [feature["geometry"] for feature in shapefile]
 
     # read the raster and make masking information
-    with rasterio.open(output_folder+'/raster.tif','r') as src:
+    with rasterio.open(output_folder+'/temp/raster.tif','r') as src:
         out_image, out_transform = mask(src, shapes, nodata=np.nan)
         out_meta = src.meta
 
@@ -698,9 +698,9 @@ def clip_to_ws(raster, shp_filename, extent, input_folder, output_folder):
                      "width": out_image.shape[2], "transform": out_transform})
 
     # write the clipped raster
-    with rasterio.open(output_folder+'/raster_clipped.tif', 'w', **out_meta) as dest:
+    with rasterio.open(output_folder+'/temp/raster_clipped.tif', 'w', **out_meta) as dest:
         dest.write(out_image)
-    return rasterio.open(output_folder+'/raster_clipped.tif').read(1)
+    return rasterio.open(output_folder+'/temp/raster_clipped.tif').read(1)
 
 ############################################################################################################
 
@@ -733,6 +733,50 @@ def plot_clipped_age_map(dem, age_interp_map_clp, ws_outline, bd, interp_method,
 
     fig.savefig(saveas, dpi=200) # save fig
 
+############################################################################################################
+    
+def make_watershed_table(dflt_grids, dflt_labels, e_maps, e_maps_res_clp, example_scenarios):
+    '''
+    compiles a table with all the necessary catchment data:
+    x, y, z, age, age uncertainty, fertility, erosional weights for all scenarios
+    dflt_grids: list of clipped grids to export
+    dflt_labels: list of labels for dflt_grids
+    e_maps: dictionary of imported erosional maps
+    e_maps_res_clp: dictionary of clipped erosional maps
+    example_scenarios: flag to activate default example scenarios
+    '''  
+    # add labels and grids of the imported erosion maps and fertility
+    if len(e_maps)>0:
+        for key,item in e_maps_res_clp.items():
+            dflt_labels.append(key)
+            dflt_grids.append(item)
+
+    ws_data = pd.DataFrame() # initiate dataframe
+    Ncells = dflt_grids[0][dflt_grids[0]==dflt_grids[0]].size
+    for g,l in zip(dflt_grids, dflt_labels):
+        if g[g==g].size != Ncells: # check if nodata cells were involved
+            warnings.warn('\nThe number of no-data cells in the '+l+' raster must match that of the clipped DEM\nPlease, make sure that the watershed polygon does not contain no-data.')         
+        ws_data[l] = g[g==g] # drop the nans and reshape to 1D-array
+
+    if len(e_maps)>0: # if present, recalculate erosional weights, such that the minimum possible erosion equals 1
+        for k,i in e_maps_res_clp.items():
+            ws_data[k] = ws_data[k]/ws_data[k].min()
+            
+    # then make uniform erosion scenario
+    ws_data['Euni'] = np.ones(len(ws_data))
+    
+    # and sort the dataframe by elevation
+    ws_data.sort_values(by='z', inplace=True)
+    
+    # If wanted, make default example erosional weights (exponential and inverse exponential function of elevation)
+    if example_scenarios:
+        ws_data['E_exp_Z'] = np.exp(ws_data.z/ws_data.z.min())
+        ws_data.E_exp_Z = ws_data.E_exp_Z/ws_data.E_exp_Z.min()
+        ws_data['E_inv_exp_Z'] = 1/ws_data.E_exp_Z
+        ws_data.E_inv_exp_Z = ws_data.E_inv_exp_Z/ws_data.E_inv_exp_Z.min()
+    
+    return ws_data
+    
 ############################################################################################################
 
 def make_pops_dict(ws_data_filename, f_map_filename, multiplier):
