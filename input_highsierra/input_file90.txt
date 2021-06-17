@@ -19,7 +19,7 @@
 
 ############### OTHER PARAMETERS AND OPTIONS ###############
 
-9 resolution: 30
+9 resolution: 90
 
 10 example_scenarios: False
 
