@@ -1,6 +1,6 @@
 '''
 This file contains all the needed functions to run the ESD_thermotrace simulations
-Last edited by A. Madella on 16th February 2021
+Last edited by A. Madella in August 2021
 '''
 
 import numpy as np                                                    # library for arrays
@@ -601,7 +601,7 @@ def plot_linreg(R2, reg0, z, a, u, error_interp, saveas, Alpha=0.32):
     fig,ax = plt.subplots(1,1,figsize=(10,6))    
     a_new = reg0.params[0]+reg0.params[1]*z
     ax.fill_between(x=z, y1=wls_prediction_std(reg0, alpha=Alpha)[1], y2=wls_prediction_std(reg0, alpha=Alpha)[2],
-                    color='k', alpha=0.3, label='{}% confidence envelope'.format((1-Alpha)*100))
+                    color='k', alpha=0.3, label='{}% confidence'.format((1-Alpha)*100))
     ax.plot(z, a_new, label='_nolegend_')
     ax.errorbar(z, a, yerr=u, fmt='ok', label='_nolegend_')
     ax.set(xlabel='elevation [m]', ylabel='age [My]')
@@ -633,7 +633,7 @@ def plot_error_map(age_interp_error_map, error_interp, bd, ws_outline, interp_me
 
     if interp_method == 'imp' or interp_method == 'zln':
         cb = fig.colorbar(im)
-        cb.set_label('bedrock age error')
+        cb.set_label('bedrock age error [Myr]')
     else:
         cb = fig.colorbar(im)
         cb.set_label('raster: total error')
@@ -1159,7 +1159,7 @@ def get_scen2detr_diss(dd, pops, pops_1s, dists, scen_labels, n):
         Kui_list = Kui_list + [get_Kui(np.random.choice(pops_1s[key],len(item)),pops[key]) for i in np.arange(n)]
         scenario_list = scenario_list + [key for i in np.arange(n)]
 
-        # allocate dataframe to store divergences scenario-to-detrital from all iterations
+        # allocate dataframe to store divergencies scenario-to-detrital from all iterations
         scen2detr[key] = pd.DataFrame(columns=['divergence','metric','scenario'])
         # write dataframe
         scen2detr[key].divergence = KS_list + Kui_list
