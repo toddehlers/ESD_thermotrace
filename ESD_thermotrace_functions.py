@@ -576,8 +576,9 @@ def make_errormap_zln(dem, z, reg0, Alpha=0.32):
     for the method 'zln', it gets the linear regression error from the reg0 WLS model
     and assigns each elevation the corresponding error
     '''
-    amin, amax = wls_prediction_std(reg0)[1], wls_prediction_std(reg0)[2]
-    error_interp = (amax-amin)/2
+    a_lower = wls_prediction_std(reg0, alpha=Alpha)[1] # get arrays of upper and lower envelope at 1-Alpha confidence
+    a_upper = wls_prediction_std(reg0, alpha=Alpha)[2]
+    error_interp = (a_upper-a_lower)/2
     error_total = error_interp # total error is the same, because x,y components don't matter in this method
     age_interp_error = np.interp(dem.zi_res_1d, z, error_total)
     age_interp_error_map = age_interp_error.reshape(dem.zi_res.shape)
@@ -1022,9 +1023,11 @@ def get_probs(pops_dict, dists_dict, all_k, k_iter, scen_labels, ref_scen):
     if len(scen_labels)>1:
         # calculate 95% confidence divergence for each k, between reference n=∞ and reference n=size of dd
         Dc_within, D_dist_dict, Dc = {}, {}, [] # prepare dictionaries and list to store results
-        for k in all_k: # get array of random divergencies, using KS statistic
-            Dc.append(np.sqrt(np.log(2/0.05)/(2*k))) # analytical solution for Dcrit
-        Dc_within[ref_scen] = Dc # list of critical distances, each for a k
+#         for k in all_k: # get array of random divergencies, using KS statistic
+#             Dc.append(np.sqrt(np.log(2/0.05)/(2*k))) # analytical solution for Dcrit
+#         Dc_within[ref_scen] = Dc # list of critical distances, each for a k
+        
+        Dc_within[ref_scen] = np.sqrt(np.log(2/0.05)/(2*all_k)).tolist() # array of critical distances, each for a k
 
         scen_labels1 = scen_labels.copy()
         scen_labels1.pop(scen_labels1.index(ref_scen)) # now remove ref_scen from labels for the next plot
